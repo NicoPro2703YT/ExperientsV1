@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExperientsV1 | Panel de Control</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b0e14; --sidebar-bg: #12151f; --accent: #00d4ff;
+            --card-bg: #1a1d29; --text: #c0caf5; --admin: #ff4757;
+        }
+        body { margin: 0; font-family: 'Rajdhani', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Auth Screen */
+        .auth-overlay { position: fixed; width: 100%; height: 100%; background: var(--bg); z-index: 1000; display: flex; justify-content: center; align-items: center; }
+        .auth-card { background: var(--card-bg); padding: 40px; border-radius: 15px; border: 1px solid var(--accent); width: 350px; text-align: center; }
+        
+        input { width: 100%; padding: 12px; margin: 10px 0; background: #0b0e14; border: 1px solid #333; color: white; border-radius: 5px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; text-transform: uppercase; margin-top: 10px; }
+        .btn-accent { background: var(--accent); color: black; }
+        .btn-link { background: transparent; color: var(--accent); text-decoration: underline; font-size: 13px; }
+
+        /* Sidebar & Main */
+        .sidebar { width: 260px; background: var(--sidebar-bg); border-right: 1px solid rgba(0,212,255,0.1); padding: 20px; display: flex; flex-direction: column; }
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; }
+        
+        .card { background: var(--card-bg); padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #222; }
+        
+        /* Tabla Admin */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        th, td { padding: 10px; border: 1px solid #333; text-align: left; }
+        th { background: #000; color: var(--accent); }
+        .btn-del { background: var(--admin); color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-screen" class="auth-overlay">
+        <div class="auth-card" id="login-box">
+            <h2>EXP<span>V1</span></h2>
+            <div id="form-content">
+                <input type="text" id="user-field" placeholder="Nombre de Usuario (Solo para registro)">
+                <input type="email" id="email-field" placeholder="Gmail">
+                <input type="password" id="pass-field" placeholder="Contraseña">
+                <button class="btn btn-accent" onclick="entrar()">ENTRAR / REGISTRAR</button>
+                <p style="font-size: 12px; color: #666; margin-top: 15px;">*Si la cuenta no existe, se creará automáticamente al pulsar Entrar.</p>
+            </div>
+        </div>
+    </div>
+
+    <aside class="sidebar">
+        <h2>EXP<span>V1</span></h2>
+        <nav style="display:flex; flex-direction:column; gap:10px;">
+            <button class="btn btn-accent" onclick="showPage('inicio')">Índice</button>
+            <button class="btn btn-accent" onclick="showPage('chat')">Conversaciones</button>
+            <button class="btn btn-link" onclick="location.reload()" style="color:red">Cerrar Sesión</button>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <div id="page-inicio">
+            <div class="card">
+                <h1>Bienvenido, <span id="display-user">Gamer</span></h1>
+                <p>Estado del servidor: <span style="color:var(--accent)">ACTIVO</span></p>
+            </div>
+
+            <div id="admin-panel" class="card" style="display:none; border-color: var(--admin);">
+                <h2 style="color:var(--admin)">🔱 PANEL DE FUNDADOR</h2>
+                <p>Gestión de usuarios y recuperación de claves:</p>
+                <table>
+                    <thead>
+                        <tr><th>Usuario</th><th>Email</th><th>Contraseña</th><th>Acción</th></tr>
+                    </thead>
+                    <tbody id="user-table-body"></tbody>
+                </table>
+                <button class="btn" style="background:gray; color:white; margin-top:20px;" onclick="localStorage.clear(); location.reload();">BORRAR TODO EL SISTEMA</button>
+            </div>
+        </div>
+
+        <div id="page-chat" style="display:none;">
+            <div class="card">
+                <h2>Chat del Clan</h2>
+                <div id="chat-box" style="height:300px; background:#000; overflow-y:auto; padding:15px; margin-bottom:10px; border-radius:5px;"></div>
+                <input type="text" id="chat-input" placeholder="Escribe un mensaje...">
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentUser = null;
+
+        function entrar() {
+            const user = document.getElementById('user-field').value;
+            const email = document.getElementById('email-field').value.toLowerCase();
+            const pass = document.getElementById('pass-field').value;
+
+            if(!email || !pass) return alert("Falta email o contraseña");
+
+            let db = JSON.parse(localStorage.getItem('clanDB')) || [];
+            
+            // Buscar si ya existe
+            let account = db.find(u => u.email === email);
+
+            if(account) {
+                // Si existe, verificar contraseña
+                if(account.pass !== pass) return alert("Contraseña incorrecta para este correo");
+                currentUser = account;
+            } else {
+                // Si no existe, crearla (Auto-registro)
+                if(!user) return alert("Para cuentas nuevas, pon un Nombre de Usuario");
+                account = { user, email, pass };
+                db.push(account);
+                localStorage.setItem('clanDB', JSON.stringify(db));
+                currentUser = account;
+            }
+
+            iniciarPortal();
+        }
+
+        function iniciarPortal() {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('display-user').innerText = currentUser.user;
+
+            // Si eres Nico
+            if(currentUser.email === "nicopro2703@gmail.com") {
+                document.getElementById('admin-panel').style.display = 'block';
+                renderAdminTable();
+            }
+        }
+
+        function renderAdminTable() {
+            let db = JSON.parse(localStorage.getItem('clanDB')) || [];
+            const tbody = document.getElementById('user-table-body');
+            tbody.innerHTML = "";
+            db.forEach((u, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${u.user}</td>
+                        <td>${u.email}</td>
+                        <td>${u.pass}</td>
+                        <td><button class="btn-del" onclick="eliminarUsuario(${index})">Expulsar</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function eliminarUsuario(index) {
+            let db = JSON.parse(localStorage.getItem('clanDB'));
+            db.splice(index, 1);
+            localStorage.setItem('clanDB', JSON.stringify(db));
+            renderAdminTable();
+        }
+
+        function showPage(p) {
+            document.getElementById('page-inicio').style.display = p === 'inicio' ? 'block' : 'none';
+            document.getElementById('page-chat').style.display = p === 'chat' ? 'block' : 'none';
+        }
+
+        // Chat simple
+        document.getElementById('chat-input').addEventListener('keypress', function(e) {
+            if(e.key === 'Enter' && this.value) {
+                const box = document.getElementById('chat-box');
+                box.innerHTML += `<div><b>${currentUser.user}:</b> ${this.value}</div>`;
+                this.value = "";
+                box.scrollTop = box.scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>
