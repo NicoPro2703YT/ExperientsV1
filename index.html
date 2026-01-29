@@ -12,6 +12,7 @@
         }
         body { margin: 0; font-family: 'Rajdhani', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
         
+        /* Pantalla de Carga/Auth */
         .auth-overlay { position: fixed; width: 100%; height: 100%; background: var(--bg); z-index: 1000; display: flex; justify-content: center; align-items: center; }
         .auth-card { background: var(--card-bg); padding: 40px; border-radius: 15px; border: 1px solid var(--accent); width: 350px; text-align: center; }
         
@@ -23,13 +24,11 @@
         .main-content { flex: 1; padding: 30px; overflow-y: auto; display: none; }
         .card { background: var(--card-bg); padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #222; }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
-        th, td { padding: 10px; border: 1px solid #333; text-align: left; }
-        th { background: #000; color: var(--accent); }
-        .btn-del { background: var(--admin); color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
-
         #chat-box { height: 300px; background: #090b10; overflow-y: auto; padding: 15px; border-radius: 8px; border: 1px solid #222; margin-bottom: 10px; }
         .msg { margin-bottom: 10px; padding: 5px 10px; background: rgba(255,255,255,0.05); border-radius: 4px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        th, td { padding: 10px; border: 1px solid #333; text-align: left; }
     </style>
 </head>
 <body>
@@ -37,10 +36,12 @@
     <div id="auth-screen" class="auth-overlay">
         <div class="auth-card">
             <h2>EXPERIENTS<span>V1</span></h2>
-            <input type="text" id="user-field" placeholder="Usuario (Nuevas cuentas)">
-            <input type="email" id="email-field" placeholder="Gmail">
-            <input type="password" id="pass-field" placeholder="Contraseña">
-            <button class="btn btn-accent" onclick="entrar()">ACCEDER</button>
+            <div id="login-fields">
+                <input type="text" id="user-field" placeholder="Usuario (Para registrarte)">
+                <input type="email" id="email-field" placeholder="Gmail">
+                <input type="password" id="pass-field" placeholder="Contraseña">
+                <button class="btn btn-accent" onclick="entrar()">ENTRAR</button>
+            </div>
         </div>
     </div>
 
@@ -56,63 +57,61 @@
     <main class="main-content" id="main-content">
         <div id="page-inicio">
             <div class="card">
-                <h1>Panel de <span id="display-user" style="color:var(--accent)">Cargando...</span></h1>
-                <p>Bienvenido al núcleo de ExperientsV1.</p>
+                <h1>Hola, <span id="display-user" style="color:var(--accent)">...</span></h1>
+                <p>Tu sesión está activa y protegida.</p>
             </div>
 
             <div id="admin-panel" class="card" style="display:none; border-color: var(--admin);">
-                <h2 style="color:var(--admin)">🔱 PANEL DE FUNDADOR (NICO)</h2>
-                <table>
-                    <thead>
-                        <tr><th>Usuario</th><th>Email</th><th>Contraseña</th><th>Acción</th></tr>
-                    </thead>
-                    <tbody id="user-table-body"></tbody>
-                </table>
+                <h2 style="color:var(--admin)">🔱 PANEL DE FUNDADOR</h2>
+                <div id="user-list">
+                    <table>
+                        <thead><tr><th>Usuario</th><th>Email</th><th>Clave</th><th>Acción</th></tr></thead>
+                        <tbody id="user-table-body"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
         <div id="page-chat" style="display:none;">
             <div class="card">
-                <h2>Chat Grupal</h2>
+                <h2>Chat del Clan</h2>
                 <div id="chat-box"></div>
-                <input type="text" id="chat-input" placeholder="Escribe un mensaje...">
+                <input type="text" id="chat-input" placeholder="Escribir mensaje...">
             </div>
         </div>
     </main>
 
     <script>
-        let currentUser = null;
-
-        // --- COMPROBAR SESIÓN AL CARGAR ---
-        window.onload = function() {
-            const savedUser = localStorage.getItem('sessionUser');
-            if (savedUser) {
-                currentUser = JSON.parse(savedUser);
+        // --- 1. COMPROBACIÓN INMEDIATA DE SESIÓN ---
+        document.addEventListener("DOMContentLoaded", () => {
+            const session = localStorage.getItem('sessionUser');
+            if (session) {
+                window.currentUser = JSON.parse(session);
                 iniciarInterfaz();
             }
-        };
+        });
 
         function entrar() {
             const user = document.getElementById('user-field').value;
             const email = document.getElementById('email-field').value.toLowerCase();
             const pass = document.getElementById('pass-field').value;
 
-            if(!email || !pass) return alert("Faltan datos");
+            if(!email || !pass) return alert("Rellena los campos");
 
             let db = JSON.parse(localStorage.getItem('clanDB')) || [];
             let account = db.find(u => u.email === email);
 
             if(account) {
                 if(account.pass !== pass) return alert("Contraseña incorrecta");
-                currentUser = account;
+                window.currentUser = account;
             } else {
-                if(!user) return alert("Escribe un nombre de usuario para registrarte");
-                currentUser = { user, email, pass };
-                db.push(currentUser);
+                if(!user) return alert("Pon un nombre de usuario para registrarte");
+                window.currentUser = { user, email, pass };
+                db.push(window.currentUser);
                 localStorage.setItem('clanDB', JSON.stringify(db));
             }
 
-            localStorage.setItem('sessionUser', JSON.stringify(currentUser));
+            localStorage.setItem('sessionUser', JSON.stringify(window.currentUser));
             iniciarInterfaz();
         }
 
@@ -120,9 +119,9 @@
             document.getElementById('auth-screen').style.display = 'none';
             document.getElementById('sidebar').style.display = 'flex';
             document.getElementById('main-content').style.display = 'block';
-            document.getElementById('display-user').innerText = currentUser.user;
+            document.getElementById('display-user').innerText = window.currentUser.user;
             
-            if(currentUser.email === "nicopro2703@gmail.com") {
+            if(window.currentUser.email === "nicopro2703@gmail.com") {
                 document.getElementById('admin-panel').style.display = 'block';
                 renderAdminTable();
             }
@@ -131,33 +130,36 @@
 
         function logout() {
             localStorage.removeItem('sessionUser');
-            location.reload();
+            window.location.reload();
         }
 
-        // --- FUNCIONES DE CHAT Y ADMIN (IGUALES QUE ANTES) ---
+        // --- RESTO DE FUNCIONES ---
         function renderAdminTable() {
             let db = JSON.parse(localStorage.getItem('clanDB')) || [];
             const tbody = document.getElementById('user-table-body');
-            tbody.innerHTML = "";
-            db.forEach((u, index) => {
-                tbody.innerHTML += `<tr><td>${u.user}</td><td>${u.email}</td><td>${u.pass}</td><td><button class="btn-del" onclick="eliminarUsuario(${index})">Eliminar</button></td></tr>`;
-            });
+            tbody.innerHTML = db.map((u, i) => `
+                <tr>
+                    <td>${u.user}</td>
+                    <td>${u.email}</td>
+                    <td>${u.pass}</td>
+                    <td><button onclick="eliminarUsuario(${i})" style="color:red">X</button></td>
+                </tr>
+            `).join('');
         }
 
-        function eliminarUsuario(index) {
+        function eliminarUsuario(i) {
             let db = JSON.parse(localStorage.getItem('clanDB'));
-            db.splice(index, 1);
+            db.splice(i, 1);
             localStorage.setItem('clanDB', JSON.stringify(db));
             renderAdminTable();
         }
 
-        const chatInput = document.getElementById('chat-input');
-        chatInput.addEventListener('keypress', (e) => {
-            if(e.key === 'Enter' && chatInput.value) {
+        document.getElementById('chat-input').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter' && e.target.value) {
                 let msgs = JSON.parse(localStorage.getItem('clanMsgs')) || [];
-                msgs.push({ user: currentUser.user, text: chatInput.value });
+                msgs.push({ user: window.currentUser.user, text: e.target.value });
                 localStorage.setItem('clanMsgs', JSON.stringify(msgs));
-                chatInput.value = "";
+                e.target.value = "";
                 loadMessages();
             }
         });
@@ -168,11 +170,6 @@
             box.innerHTML = msgs.map(m => `<div class="msg"><b>${m.user}:</b> ${m.text}</div>`).join('');
             box.scrollTop = box.scrollHeight;
         }
-
-        window.addEventListener('storage', () => {
-            loadMessages();
-            if(currentUser && currentUser.email === "nicopro2703@gmail.com") renderAdminTable();
-        });
 
         function showPage(p) {
             document.getElementById('page-inicio').style.display = p === 'inicio' ? 'block' : 'none';
