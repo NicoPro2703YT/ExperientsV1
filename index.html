@@ -12,28 +12,23 @@
         }
         body { margin: 0; font-family: 'Rajdhani', sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
         
-        /* Auth */
         .auth-overlay { position: fixed; width: 100%; height: 100%; background: var(--bg); z-index: 1000; display: flex; justify-content: center; align-items: center; }
         .auth-card { background: var(--card-bg); padding: 40px; border-radius: 15px; border: 1px solid var(--accent); width: 350px; text-align: center; }
         
         input { width: 100%; padding: 12px; margin: 10px 0; background: #0b0e14; border: 1px solid #333; color: white; border-radius: 5px; box-sizing: border-box; }
         .btn { width: 100%; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; text-transform: uppercase; margin-top: 10px; transition: 0.3s; }
         .btn-accent { background: var(--accent); color: black; }
-        .btn-accent:hover { box-shadow: 0 0 15px var(--accent); }
 
-        /* Estructura */
         .sidebar { width: 260px; background: var(--sidebar-bg); border-right: 1px solid rgba(0,212,255,0.1); padding: 20px; display: flex; flex-direction: column; }
-        .main-content { flex: 1; padding: 30px; overflow-y: auto; }
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; display: none; }
         .card { background: var(--card-bg); padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #222; }
         
-        /* Tabla */
         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
         th, td { padding: 10px; border: 1px solid #333; text-align: left; }
         th { background: #000; color: var(--accent); }
         .btn-del { background: var(--admin); color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
 
-        /* Chat */
-        #chat-box { height: 350px; background: #090b10; overflow-y: auto; padding: 15px; border-radius: 8px; border: 1px solid #222; margin-bottom: 10px; }
+        #chat-box { height: 300px; background: #090b10; overflow-y: auto; padding: 15px; border-radius: 8px; border: 1px solid #222; margin-bottom: 10px; }
         .msg { margin-bottom: 10px; padding: 5px 10px; background: rgba(255,255,255,0.05); border-radius: 4px; }
     </style>
 </head>
@@ -42,26 +37,26 @@
     <div id="auth-screen" class="auth-overlay">
         <div class="auth-card">
             <h2>EXPERIENTS<span>V1</span></h2>
-            <input type="text" id="user-field" placeholder="Usuario (Para nuevas cuentas)">
+            <input type="text" id="user-field" placeholder="Usuario (Nuevas cuentas)">
             <input type="email" id="email-field" placeholder="Gmail">
             <input type="password" id="pass-field" placeholder="Contraseña">
-            <button class="btn btn-accent" onclick="entrar()">ACCEDER AL PANEL</button>
+            <button class="btn btn-accent" onclick="entrar()">ACCEDER</button>
         </div>
     </div>
 
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar" style="display:none;">
         <h2 style="text-align:center">EXP<span>V1</span></h2>
         <nav style="display:flex; flex-direction:column; gap:10px;">
             <button class="btn btn-accent" onclick="showPage('inicio')">🏠 INICIO</button>
             <button class="btn btn-accent" onclick="showPage('chat')">💬 CHAT CLAN</button>
-            <button class="btn" style="background:transparent; color:red; border:1px solid red;" onclick="location.reload()">CERRAR SESIÓN</button>
+            <button class="btn" style="background:transparent; color:red; border:1px solid red;" onclick="logout()">CERRAR SESIÓN</button>
         </nav>
     </aside>
 
-    <main class="main-content">
+    <main class="main-content" id="main-content">
         <div id="page-inicio">
             <div class="card">
-                <h1>Panel de <span id="display-user" style="color:var(--accent)">Invitado</span></h1>
+                <h1>Panel de <span id="display-user" style="color:var(--accent)">Cargando...</span></h1>
                 <p>Bienvenido al núcleo de ExperientsV1.</p>
             </div>
 
@@ -78,9 +73,9 @@
 
         <div id="page-chat" style="display:none;">
             <div class="card">
-                <h2>Chat Global de Miembros</h2>
+                <h2>Chat Grupal</h2>
                 <div id="chat-box"></div>
-                <input type="text" id="chat-input" placeholder="Escribe un mensaje y pulsa Enter...">
+                <input type="text" id="chat-input" placeholder="Escribe un mensaje...">
             </div>
         </div>
     </main>
@@ -88,13 +83,21 @@
     <script>
         let currentUser = null;
 
-        // --- SISTEMA DE ENTRADA ---
+        // --- COMPROBAR SESIÓN AL CARGAR ---
+        window.onload = function() {
+            const savedUser = localStorage.getItem('sessionUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                iniciarInterfaz();
+            }
+        };
+
         function entrar() {
             const user = document.getElementById('user-field').value;
             const email = document.getElementById('email-field').value.toLowerCase();
             const pass = document.getElementById('pass-field').value;
 
-            if(!email || !pass) return alert("Email y Contraseña obligatorios");
+            if(!email || !pass) return alert("Faltan datos");
 
             let db = JSON.parse(localStorage.getItem('clanDB')) || [];
             let account = db.find(u => u.email === email);
@@ -103,14 +106,20 @@
                 if(account.pass !== pass) return alert("Contraseña incorrecta");
                 currentUser = account;
             } else {
-                if(!user) return alert("Para registrarte, pon un nombre de Usuario");
-                account = { user, email, pass };
-                db.push(account);
+                if(!user) return alert("Escribe un nombre de usuario para registrarte");
+                currentUser = { user, email, pass };
+                db.push(currentUser);
                 localStorage.setItem('clanDB', JSON.stringify(db));
-                currentUser = account;
             }
 
+            localStorage.setItem('sessionUser', JSON.stringify(currentUser));
+            iniciarInterfaz();
+        }
+
+        function iniciarInterfaz() {
             document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('sidebar').style.display = 'flex';
+            document.getElementById('main-content').style.display = 'block';
             document.getElementById('display-user').innerText = currentUser.user;
             
             if(currentUser.email === "nicopro2703@gmail.com") {
@@ -120,7 +129,12 @@
             loadMessages();
         }
 
-        // --- PANEL ADMIN ---
+        function logout() {
+            localStorage.removeItem('sessionUser');
+            location.reload();
+        }
+
+        // --- FUNCIONES DE CHAT Y ADMIN (IGUALES QUE ANTES) ---
         function renderAdminTable() {
             let db = JSON.parse(localStorage.getItem('clanDB')) || [];
             const tbody = document.getElementById('user-table-body');
@@ -137,7 +151,6 @@
             renderAdminTable();
         }
 
-        // --- CHAT MULTI-CUENTA ---
         const chatInput = document.getElementById('chat-input');
         chatInput.addEventListener('keypress', (e) => {
             if(e.key === 'Enter' && chatInput.value) {
@@ -156,7 +169,6 @@
             box.scrollTop = box.scrollHeight;
         }
 
-        // Actualizar chat automáticamente si hay cambios en otra pestaña
         window.addEventListener('storage', () => {
             loadMessages();
             if(currentUser && currentUser.email === "nicopro2703@gmail.com") renderAdminTable();
